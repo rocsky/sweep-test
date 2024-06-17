@@ -100,6 +100,66 @@ Do not provide any explanations or text apart from the translation.
     return translation
 
 
+def generate_reflection_prompt(source_lang: str, target_lang: str, country: str = "") -> str:
+    """
+    Generate a reflection prompt for improving a translation.
+
+    Args:
+        source_lang (str): The source language of the text.
+        target_lang (str): The target language of the translation.
+        country (str): Country specified for target language.
+
+    Returns:
+        str: The generated reflection prompt.
+    """
+    if country != "":
+        return f"""Your task is to carefully read a source text and a translation from {source_lang} to {target_lang}, and then give constructive criticism and helpful suggestions to improve the translation. \
+The final style and tone of the translation should match the style of {target_lang} colloquially spoken in {country}.
+
+The source text and initial translation, delimited by XML tags <SOURCE_TEXT></SOURCE_TEXT> and <TRANSLATION></TRANSLATION>, are as follows:
+
+<SOURCE_TEXT>
+{{source_text}}
+</SOURCE_TEXT>
+
+<TRANSLATION>
+{{translation_1}}
+</TRANSLATION>
+
+When writing suggestions, pay attention to whether there are ways to improve the translation's \n\
+(i) accuracy (by correcting errors of addition, mistranslation, omission, or untranslated text),\n\
+(ii) fluency (by applying {target_lang} grammar, spelling and punctuation rules, and ensuring there are no unnecessary repetitions),\n\
+(iii) style (by ensuring the translations reflect the style of the source text and takes into account any cultural context),\n\
+(iv) terminology (by ensuring terminology use is consistent and reflects the source text domain; and by only ensuring you use equivalent idioms {target_lang}).\n\
+
+Write a list of specific, helpful and constructive suggestions for improving the translation.
+Each suggestion should address one specific part of the translation.
+Output only the suggestions and nothing else."""
+
+    else:
+        return f"""Your task is to carefully read a source text and a translation from {source_lang} to {target_lang}, and then give constructive criticism and helpful suggestions to improve the translation. \
+
+The source text and initial translation, delimited by XML tags <SOURCE_TEXT></SOURCE_TEXT> and <TRANSLATION></TRANSLATION>, are as follows:
+
+<SOURCE_TEXT>
+{{source_text}}
+</SOURCE_TEXT>
+
+<TRANSLATION>
+{{translation_1}}
+</TRANSLATION>
+
+When writing suggestions, pay attention to whether there are ways to improve the translation's \n\
+(i) accuracy (by correcting errors of addition, mistranslation, omission, or untranslated text),\n\
+(ii) fluency (by applying {target_lang} grammar, spelling and punctuation rules, and ensuring there are no unnecessary repetitions),\n\
+(iii) style (by ensuring the translations reflect the style of the source text and takes into account any cultural context),\n\
+(iv) terminology (by ensuring terminology use is consistent and reflects the source text domain; and by only ensuring you use equivalent idioms {target_lang}).\n\
+
+Write a list of specific, helpful and constructive suggestions for improving the translation.
+Each suggestion should address one specific part of the translation.
+Output only the suggestions and nothing else."""
+
+
 def one_chunk_reflect_on_translation(
     source_lang: str,
     target_lang: str,
@@ -124,56 +184,9 @@ def one_chunk_reflect_on_translation(
     system_message = f"You are an expert linguist specializing in translation from {source_lang} to {target_lang}. \
 You will be provided with a source text and its translation and your goal is to improve the translation."
 
-    if country != "":
-        reflection_prompt = f"""Your task is to carefully read a source text and a translation from {source_lang} to {target_lang}, and then give constructive criticism and helpful suggestions to improve the translation. \
-The final style and tone of the translation should match the style of {target_lang} colloquially spoken in {country}.
-
-The source text and initial translation, delimited by XML tags <SOURCE_TEXT></SOURCE_TEXT> and <TRANSLATION></TRANSLATION>, are as follows:
-
-<SOURCE_TEXT>
-{source_text}
-</SOURCE_TEXT>
-
-<TRANSLATION>
-{translation_1}
-</TRANSLATION>
-
-When writing suggestions, pay attention to whether there are ways to improve the translation's \n\
-(i) accuracy (by correcting errors of addition, mistranslation, omission, or untranslated text),\n\
-(ii) fluency (by applying {target_lang} grammar, spelling and punctuation rules, and ensuring there are no unnecessary repetitions),\n\
-(iii) style (by ensuring the translations reflect the style of the source text and takes into account any cultural context),\n\
-(iv) terminology (by ensuring terminology use is consistent and reflects the source text domain; and by only ensuring you use equivalent idioms {target_lang}).\n\
-
-Write a list of specific, helpful and constructive suggestions for improving the translation.
-Each suggestion should address one specific part of the translation.
-Output only the suggestions and nothing else."""
-
-    else:
-        reflection_prompt = f"""Your task is to carefully read a source text and a translation from {source_lang} to {target_lang}, and then give constructive criticism and helpful suggestions to improve the translation. \
-
-The source text and initial translation, delimited by XML tags <SOURCE_TEXT></SOURCE_TEXT> and <TRANSLATION></TRANSLATION>, are as follows:
-
-<SOURCE_TEXT>
-{source_text}
-</SOURCE_TEXT>
-
-<TRANSLATION>
-{translation_1}
-</TRANSLATION>
-
-When writing suggestions, pay attention to whether there are ways to improve the translation's \n\
-(i) accuracy (by correcting errors of addition, mistranslation, omission, or untranslated text),\n\
-(ii) fluency (by applying {target_lang} grammar, spelling and punctuation rules, and ensuring there are no unnecessary repetitions),\n\
-(iii) style (by ensuring the translations reflect the style of the source text and takes into account any cultural context),\n\
-(iv) terminology (by ensuring terminology use is consistent and reflects the source text domain; and by only ensuring you use equivalent idioms {target_lang}).\n\
-
-Write a list of specific, helpful and constructive suggestions for improving the translation.
-Each suggestion should address one specific part of the translation.
-Output only the suggestions and nothing else."""
+    reflection_prompt = generate_reflection_prompt(source_lang, target_lang, country)
 
     prompt = reflection_prompt.format(
-        source_lang=source_lang,
-        target_lang=target_lang,
         source_text=source_text,
         translation_1=translation_1,
     )
@@ -377,68 +390,7 @@ def multichunk_reflect_on_translation(
     system_message = f"You are an expert linguist specializing in translation from {source_lang} to {target_lang}. \
 You will be provided with a source text and its translation and your goal is to improve the translation."
 
-    if country != "":
-        reflection_prompt = """Your task is to carefully read a source text and part of a translation of that text from {source_lang} to {target_lang}, and then give constructive criticism and helpful suggestions for improving the translation.
-The final style and tone of the translation should match the style of {target_lang} colloquially spoken in {country}.
-
-The source text is below, delimited by XML tags <SOURCE_TEXT> and </SOURCE_TEXT>, and the part that has been translated
-is delimited by <TRANSLATE_THIS> and </TRANSLATE_THIS> within the source text. You can use the rest of the source text
-as context for critiquing the translated part.
-
-<SOURCE_TEXT>
-{tagged_text}
-</SOURCE_TEXT>
-
-To reiterate, only part of the text is being translated, shown here again between <TRANSLATE_THIS> and </TRANSLATE_THIS>:
-<TRANSLATE_THIS>
-{chunk_to_translate}
-</TRANSLATE_THIS>
-
-The translation of the indicated part, delimited below by <TRANSLATION> and </TRANSLATION>, is as follows:
-<TRANSLATION>
-{translation_1_chunk}
-</TRANSLATION>
-
-When writing suggestions, pay attention to whether there are ways to improve the translation's:\n\
-(i) accuracy (by correcting errors of addition, mistranslation, omission, or untranslated text),\n\
-(ii) fluency (by applying {target_lang} grammar, spelling and punctuation rules, and ensuring there are no unnecessary repetitions),\n\
-(iii) style (by ensuring the translations reflect the style of the source text and takes into account any cultural context),\n\
-(iv) terminology (by ensuring terminology use is consistent and reflects the source text domain; and by only ensuring you use equivalent idioms {target_lang}).\n\
-
-Write a list of specific, helpful and constructive suggestions for improving the translation.
-Each suggestion should address one specific part of the translation.
-Output only the suggestions and nothing else."""
-
-    else:
-        reflection_prompt = """Your task is to carefully read a source text and part of a translation of that text from {source_lang} to {target_lang}, and then give constructive criticism and helpful suggestions for improving the translation.
-
-The source text is below, delimited by XML tags <SOURCE_TEXT> and </SOURCE_TEXT>, and the part that has been translated
-is delimited by <TRANSLATE_THIS> and </TRANSLATE_THIS> within the source text. You can use the rest of the source text
-as context for critiquing the translated part.
-
-<SOURCE_TEXT>
-{tagged_text}
-</SOURCE_TEXT>
-
-To reiterate, only part of the text is being translated, shown here again between <TRANSLATE_THIS> and </TRANSLATE_THIS>:
-<TRANSLATE_THIS>
-{chunk_to_translate}
-</TRANSLATE_THIS>
-
-The translation of the indicated part, delimited below by <TRANSLATION> and </TRANSLATION>, is as follows:
-<TRANSLATION>
-{translation_1_chunk}
-</TRANSLATION>
-
-When writing suggestions, pay attention to whether there are ways to improve the translation's:\n\
-(i) accuracy (by correcting errors of addition, mistranslation, omission, or untranslated text),\n\
-(ii) fluency (by applying {target_lang} grammar, spelling and punctuation rules, and ensuring there are no unnecessary repetitions),\n\
-(iii) style (by ensuring the translations reflect the style of the source text and takes into account any cultural context),\n\
-(iv) terminology (by ensuring terminology use is consistent and reflects the source text domain; and by only ensuring you use equivalent idioms {target_lang}).\n\
-
-Write a list of specific, helpful and constructive suggestions for improving the translation.
-Each suggestion should address one specific part of the translation.
-Output only the suggestions and nothing else."""
+    reflection_prompt = generate_reflection_prompt(source_lang, target_lang, country)
 
     reflection_chunks = []
     for i in range(len(source_text_chunks)):
@@ -450,23 +402,12 @@ Output only the suggestions and nothing else."""
             + "</TRANSLATE_THIS>"
             + "".join(source_text_chunks[i + 1 :])
         )
-        if country != "":
-            prompt = reflection_prompt.format(
-                source_lang=source_lang,
-                target_lang=target_lang,
-                tagged_text=tagged_text,
-                chunk_to_translate=source_text_chunks[i],
-                translation_1_chunk=translation_1_chunks[i],
-                country=country,
-            )
-        else:
-            prompt = reflection_prompt.format(
-                source_lang=source_lang,
-                target_lang=target_lang,
-                tagged_text=tagged_text,
-                chunk_to_translate=source_text_chunks[i],
-                translation_1_chunk=translation_1_chunks[i],
-            )
+
+        prompt = reflection_prompt.format(
+            tagged_text=tagged_text,
+            chunk_to_translate=source_text_chunks[i],
+            translation_1_chunk=translation_1_chunks[i],
+        )
 
         reflection = get_completion(prompt, system_message=system_message)
         reflection_chunks.append(reflection)
